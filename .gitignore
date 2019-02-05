@@ -1,3 +1,6 @@
 terraform/.terraform
 terraform/terraform.tf
 terraform/terraform.tfvars
+terraform/handler.zip
+lambda/handler
+lambda/lambda
