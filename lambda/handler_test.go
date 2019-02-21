@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/google/trillian/server"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"testing"
@@ -53,5 +54,7 @@ func TestHandleRequest(t *testing.T) {
 	if err := json.Unmarshal([]byte(s), &inputEvent); err != nil {
 		t.Errorf("could not unmarshal event. details: %v", err)
 	}
+	sp, _ := server.NewStorageProvider("memory", nil)
+	StartTrillian(sp)
 	HandleRequest(nil, inputEvent)
 }
