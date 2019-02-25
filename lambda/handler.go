@@ -4,6 +4,8 @@ import (
 	"flag"
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/server"
@@ -14,7 +16,6 @@ import (
 )
 
 var logServer server.TrillianLogRPCServer
-var logId int64 = 0
 
 func HandleRequest(ctx context.Context, s3Event events.S3Event) {
 	for _, record := range s3Event.Records {
@@ -24,7 +25,7 @@ func HandleRequest(ctx context.Context, s3Event events.S3Event) {
 	}
 }
 
-func StartTrillian(ctx context.Context, sp server.StorageProvider) {
+func StartTrillian(ctx context.Context, sp server.StorageProvider, treeId int64) {
 	registry := extension.Registry{
 		AdminStorage:  sp.AdminStorage(),
 		LogStorage:    sp.LogStorage(),
@@ -32,9 +33,9 @@ func StartTrillian(ctx context.Context, sp server.StorageProvider) {
 	timeSource := clock.System
 	logServer = *server.NewTrillianLogRPCServer(registry, timeSource)
 	glog.Infof("Trillian has started, health: %v", logServer.IsHealthy())
-	res, err := logServer.InitLog(ctx, &trillian.InitLogRequest{LogId: logId})
+	res, err := logServer.InitLog(ctx, &trillian.InitLogRequest{LogId: treeId})
 	if err != nil {
-		glog.Warningf("Unable to initlog", err)
+		glog.Warningf("Unable to initlog: %v", err)
 		return
 	}
 	glog.Infof("Log initialised: %v", res)
@@ -48,6 +49,11 @@ func main() {
 		glog.Warningf("Unable to create storage provider: %v", err)
 		return
 	}
-	StartTrillian(ctx, sp)
+	treeId, err := strconv.ParseInt(os.Getenv("TREE_ID"), 0, 64)
+	if err != nil {
+		glog.Warningf("Invalid tree ID: %v", err)
+		return
+	}
+	StartTrillian(ctx, sp, treeId)
 	lambda.Start(HandleRequest)
 }
