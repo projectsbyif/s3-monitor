@@ -19,11 +19,10 @@ import (
 
 var th = rfc6962.DefaultHasher
 
-func CreateLeaf(hash []byte, data []byte, index int64) *trillian.LogLeaf {
+func CreateLeaf(hash []byte, data []byte) *trillian.LogLeaf {
 	return &trillian.LogLeaf {
 		MerkleLeafHash: hash,
 		LeafValue: data,
-		LeafIndex: index,
 	}
 }
 
@@ -31,7 +30,7 @@ func CreateHandler(logServer *server.TrillianLogRPCServer, logId int64) func(ctx
 	log := logServer
 	return func(ctx context.Context, s3Event events.S3Event)  {
 		var index int64 = 0
-		var sequencedLeaves []*trillian.LogLeaf
+		var leaves []*trillian.LogLeaf
 
 		for _, record := range s3Event.Records {
 			index++
@@ -39,10 +38,14 @@ func CreateHandler(logServer *server.TrillianLogRPCServer, logId int64) func(ctx
 			fmt.Printf("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, s3.Bucket.Name, s3.Object.Key)
 			data, _ := json.Marshal(s3)
 			hash, _ := th.HashLeaf(data)
-			sequencedLeaves = append(sequencedLeaves, CreateLeaf(hash, data, index))
+			leaves = append(leaves, CreateLeaf(hash, data))
 		}
-		req := &trillian.AddSequencedLeavesRequest{LogId: logId, Leaves: sequencedLeaves}
-		log.AddSequencedLeaves(ctx, req)
+		req := &trillian.QueueLeavesRequest{LogId: logId, Leaves: leaves}
+		res, err := log.QueueLeaves(ctx, req)
+		if err != nil {
+			glog.Errorf("Unable to write leaf: %v", err)
+		}
+		glog.Infof("Queueing response: %v", res)
 	}
 }
 
