@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/golang/mock/gomock"
 	"github.com/google/trillian"
 	"github.com/google/trillian/server"
 	"github.com/google/trillian/storage"
+	"github.com/projectsbyif/verifiable-cloudtrail/lambda/testonly"
 
 	stestonly "github.com/google/trillian/storage/testonly"
 )
@@ -41,7 +43,7 @@ func assertLeavesAdded(t *testing.T, tx storage.LogMetadata, expectedNumberOfNew
 	}
 }
 
-func TestHandleRequest(t *testing.T) {
+func TestHandlerTrillianIntegration(t *testing.T) {
 	// Setup code
 	ctx := context.Background()
 	sp, _ := server.NewStorageProvider("memory", nil)
@@ -77,4 +79,15 @@ func TestHandleRequest(t *testing.T) {
 			handleRequest(ctx, inputEvent)
 		})
 	})
+}
+
+func TestHandler_OnlyQueuesLeavesWhenEventsExist(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := testonly.NewMockLeafQueuer(mockCtrl)
+	handleRequest := CreateHandler(mockObj, treeID)
+	inputEvent := loadS3Event(t, "testdata/noEvent.json")
+	mockObj.EXPECT().QueueLeaves(gomock.Any(), gomock.Any()).Times(0)
+	handleRequest(context.TODO(), inputEvent)
 }

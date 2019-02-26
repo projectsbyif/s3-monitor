@@ -1,34 +1,39 @@
 package main
 
 import (
-	"flag"
 	"context"
-	"fmt"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"os"
 	"strconv"
-	"github.com/golang/glog"
-	"github.com/google/trillian"
-	"github.com/google/trillian/server"
-	"github.com/google/trillian/extension"
-	"github.com/google/trillian/merkle/rfc6962"
-	"github.com/google/trillian/util/clock"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/golang/glog"
+	"github.com/google/trillian"
+	"github.com/google/trillian/extension"
+	"github.com/google/trillian/merkle/rfc6962"
+	"github.com/google/trillian/server"
+	"github.com/google/trillian/util/clock"
 )
 
 var th = rfc6962.DefaultHasher
 
+type LeafQueuer interface {
+	QueueLeaves(context.Context, *trillian.QueueLeavesRequest) (*trillian.QueueLeavesResponse, error)
+}
+
 func CreateLeaf(hash []byte, data []byte) *trillian.LogLeaf {
-	return &trillian.LogLeaf {
+	return &trillian.LogLeaf{
 		MerkleLeafHash: hash,
-		LeafValue: data,
+		LeafValue:      data,
 	}
 }
 
-func CreateHandler(logServer *server.TrillianLogRPCServer, logId int64) func(ctx context.Context, s3Event events.S3Event) {
+func CreateHandler(logServer LeafQueuer, logId int64) func(ctx context.Context, s3Event events.S3Event) {
 	log := logServer
-	return func(ctx context.Context, s3Event events.S3Event)  {
+	return func(ctx context.Context, s3Event events.S3Event) {
 		var index int64 = 0
 		var leaves []*trillian.LogLeaf
 
@@ -40,19 +45,21 @@ func CreateHandler(logServer *server.TrillianLogRPCServer, logId int64) func(ctx
 			hash, _ := th.HashLeaf(data)
 			leaves = append(leaves, CreateLeaf(hash, data))
 		}
-		req := &trillian.QueueLeavesRequest{LogId: logId, Leaves: leaves}
-		res, err := log.QueueLeaves(ctx, req)
-		if err != nil {
-			glog.Errorf("Unable to write leaf: %v", err)
+		if len(leaves) > 0 {
+			req := &trillian.QueueLeavesRequest{LogId: logId, Leaves: leaves}
+			res, err := log.QueueLeaves(ctx, req)
+			if err != nil {
+				glog.Errorf("Unable to write leaf: %v", err)
+			}
+			glog.Infof("Queueing response: %v", res)
 		}
-		glog.Infof("Queueing response: %v", res)
 	}
 }
 
 func StartTrillian(ctx context.Context, sp server.StorageProvider, treeId int64) (*server.TrillianLogRPCServer, error) {
 	registry := extension.Registry{
-		AdminStorage:  sp.AdminStorage(),
-		LogStorage:    sp.LogStorage(),
+		AdminStorage: sp.AdminStorage(),
+		LogStorage:   sp.LogStorage(),
 	}
 	timeSource := clock.System
 	logServer := *server.NewTrillianLogRPCServer(registry, timeSource)
