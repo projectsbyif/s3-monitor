@@ -1,57 +1,93 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/aws/aws-lambda-go/events"
+	"io/ioutil"
 	"testing"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/golang/mock/gomock"
+	"github.com/google/trillian"
+	"github.com/google/trillian/server"
+	"github.com/google/trillian/storage"
+	"github.com/projectsbyif/verifiable-cloudtrail/lambda/testonly"
+
+	stestonly "github.com/google/trillian/storage/testonly"
 )
 
-func TestHandleRequest(t *testing.T) {
-	s := `
-{
-  "Records": [
-    {
-      "eventVersion": "2.0",
-      "eventSource": "aws:s3",
-      "awsRegion": "us-east-1",
-      "eventTime": "1970-01-01T00:00:00.123Z",
-      "eventName": "ObjectCreated:Put",
-      "userIdentity": {
-        "principalId": "EXAMPLE"
-      },
-      "requestParameters": {
-        "sourceIPAddress": "127.0.0.1"
-      },
-      "responseElements": { 
-        "x-amz-request-id": "C3D13FE58DE4C810",
-        "x-amz-id-2": "FMyUVURIY8/IgAtTv8xRjskZQpcIZ9KG4V5Wp6S7S/JRWeUWerMUE5JgHvANOjpD"
-      },
-      "s3": {
-        "s3SchemaVersion": "1.0",
-        "configurationId": "testConfigRule",
-        "bucket": {
-          "name": "sourcebucket",
-          "ownerIdentity": {
-            "principalId": "EXAMPLE"
-          },
-          "arn": "arn:aws:s3:::mybucket"
-        },
-        "object": {
-          "key": "HappyFace.jpg",
-          "size": 1024,
-          "urlDecodedKey": "HappyFace.jpg",
-          "versionId": "version",
-          "eTag": "d41d8cd98f00b204e9800998ecf8427e",
-          "sequencer": "Happy Sequencer"
-        }
-      }
-    }
-  ]
-}
-`
+var (
+	treeID int64
+)
+
+func loadS3Event(t *testing.T, fileName string) events.S3Event {
 	var inputEvent events.S3Event
+	s, _ := ioutil.ReadFile(fileName)
 	if err := json.Unmarshal([]byte(s), &inputEvent); err != nil {
 		t.Errorf("could not unmarshal event. details: %v", err)
 	}
-	HandleRequest(nil, inputEvent)
+	return inputEvent
+}
+
+func numberOfLeaves(tx storage.LogMetadata) int64 {
+	trees, _ := tx.GetUnsequencedCounts(context.TODO())
+	return trees[treeID]
+}
+
+func assertLeavesAdded(t *testing.T, tx storage.LogMetadata, expectedNumberOfNewLeaves int64, f func()) {
+	countBefore := numberOfLeaves(tx)
+	f()
+	countAfter := numberOfLeaves(tx)
+	if countAfter-countBefore != expectedNumberOfNewLeaves {
+		t.Errorf("Expected %v leaf in tree, found %v", expectedNumberOfNewLeaves, countAfter-countBefore)
+	}
+}
+
+func TestHandlerTrillianIntegration(t *testing.T) {
+	// Setup code
+	ctx := context.Background()
+	sp, _ := server.NewStorageProvider("memory", nil)
+	var tree *trillian.Tree
+	sp.AdminStorage().ReadWriteTransaction(ctx, func(ctx context.Context, tx storage.AdminTX) error {
+		tree, _ = tx.CreateTree(ctx, stestonly.LogTree)
+		tx.Commit()
+		return nil
+	})
+	treeID = tree.TreeId
+	logServer, _ := StartTrillian(ctx, sp, treeID)
+	handleRequest := CreateHandler(logServer, treeID)
+	tx, _ := sp.LogStorage().Snapshot(ctx)
+	defer tx.Close()
+
+	t.Run("one event", func(t *testing.T) {
+		assertLeavesAdded(t, tx, 1, func() {
+			inputEvent := loadS3Event(t, "testdata/oneEvent.json")
+			handleRequest(ctx, inputEvent)
+		})
+	})
+
+	t.Run("no events", func(t *testing.T) {
+		assertLeavesAdded(t, tx, 0, func() {
+			inputEvent := loadS3Event(t, "testdata/noEvent.json")
+			handleRequest(ctx, inputEvent)
+		})
+	})
+
+	t.Run("multiple events", func(t *testing.T) {
+		assertLeavesAdded(t, tx, 5, func() {
+			inputEvent := loadS3Event(t, "testdata/fiveEvents.json")
+			handleRequest(ctx, inputEvent)
+		})
+	})
+}
+
+func TestHandler_OnlyQueuesLeavesWhenEventsExist(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := testonly.NewMockLeafQueuer(mockCtrl)
+	handleRequest := CreateHandler(mockObj, treeID)
+	inputEvent := loadS3Event(t, "testdata/noEvent.json")
+	mockObj.EXPECT().QueueLeaves(gomock.Any(), gomock.Any()).Times(0)
+	handleRequest(context.TODO(), inputEvent)
 }
