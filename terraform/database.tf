@@ -28,9 +28,9 @@ resource "aws_security_group" "trillian-db" {
   name        = "trillian-db"
 
   ingress {
-    from_port = 3306
-    to_port   = 3306
-    protocol  = "tcp"
-    cidr_blocks = ["167.98.66.126/32"]
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = ["${aws_security_group.trillian-s3-handler.id}"]
   }
 }
