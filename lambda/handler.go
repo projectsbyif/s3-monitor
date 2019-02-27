@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
-	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -19,7 +17,10 @@ import (
 	"github.com/jamiealquiza/envy"
 )
 
-var th = rfc6962.DefaultHasher
+var (
+	th = rfc6962.DefaultHasher
+	treeId = flag.Int64("treeid", 0, "ID of the Trillian log tree events should be stored in.")
+)
 
 type LeafQueuer interface {
 	QueueLeaves(context.Context, *trillian.QueueLeavesRequest) (*trillian.QueueLeavesResponse, error)
@@ -83,11 +84,6 @@ func main() {
 		glog.Warningf("Unable to create storage provider: %v", err)
 		return
 	}
-	treeId, err := strconv.ParseInt(os.Getenv("TREE_ID"), 0, 64)
-	if err != nil {
-		glog.Warningf("Invalid tree ID: %v", err)
-		return
-	}
-	logServer, _ := StartTrillian(ctx, sp, treeId)
-	lambda.Start(CreateHandler(logServer, treeId))
+	logServer, _ := StartTrillian(ctx, sp, *treeId)
+	lambda.Start(CreateHandler(logServer, *treeId))
 }
