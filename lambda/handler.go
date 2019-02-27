@@ -16,6 +16,7 @@ import (
 	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/google/trillian/server"
 	"github.com/google/trillian/util/clock"
+	"github.com/jamiealquiza/envy"
 )
 
 var th = rfc6962.DefaultHasher
@@ -74,6 +75,7 @@ func StartTrillian(ctx context.Context, sp server.StorageProvider, treeId int64)
 }
 
 func main() {
+	envy.Parse("LAMBDA")
 	flag.Parse()
 	ctx := context.Background()
 	sp, err := server.NewStorageProvider("mysql", nil)
