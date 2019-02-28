@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	th = rfc6962.DefaultHasher
+	th     = rfc6962.DefaultHasher
 	treeId = flag.Int64("treeid", 0, "ID of the Trillian log tree events should be stored in.")
 )
 
@@ -80,6 +80,7 @@ func main() {
 	flag.Parse()
 	ctx := context.Background()
 	sp, err := server.NewStorageProvider("mysql", nil)
+	defer sp.Close()
 	if err != nil {
 		glog.Warningf("Unable to create storage provider: %v", err)
 		return
