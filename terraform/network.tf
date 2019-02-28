@@ -26,3 +26,13 @@ resource "aws_subnet" "main-c" {
   cidr_block        = "10.0.3.0/24"
   availability_zone = "${data.aws_availability_zones.available.names[2]}"
 }
+
+resource "aws_default_route_table" "rt" {
+  default_route_table_id = "${aws_vpc.main.default_route_table_id}"
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.gw.id}"
+  }
+}
+
