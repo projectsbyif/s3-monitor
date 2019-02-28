@@ -61,7 +61,6 @@ func lambdaHandler(ctx context.Context, s3Event events.S3Event) {
 		glog.Warningf("Unable to create storage provider: %v", err)
 		return
 	}
-	defer sp.Close()
 	registry := extension.Registry{
 		AdminStorage: sp.AdminStorage(),
 		LogStorage:   sp.LogStorage(),
