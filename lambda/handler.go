@@ -33,9 +33,10 @@ func CreateLeaf(hash []byte, data []byte) *trillian.LogLeaf {
 	}
 }
 
-func CreateHandler(logServer LeafQueuer, logId int64) func(ctx context.Context, s3Event events.S3Event) {
+func CreateHandler(logServer LeafQueuer, logId int64, sp server.StorageProvider) func(ctx context.Context, s3Event events.S3Event) {
 	log := logServer
 	return func(ctx context.Context, s3Event events.S3Event) {
+		defer sp.Close()
 		var index int64 = 0
 		var leaves []*trillian.LogLeaf
 
@@ -80,11 +81,10 @@ func main() {
 	flag.Parse()
 	ctx := context.Background()
 	sp, err := server.NewStorageProvider("mysql", nil)
-	defer sp.Close()
 	if err != nil {
 		glog.Warningf("Unable to create storage provider: %v", err)
 		return
 	}
 	logServer, _ := StartTrillian(ctx, sp, *treeId)
-	lambda.Start(CreateHandler(logServer, *treeId))
+	lambda.Start(CreateHandler(logServer, *treeId, sp))
 }
