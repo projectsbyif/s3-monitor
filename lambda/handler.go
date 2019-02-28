@@ -55,12 +55,13 @@ func ProcessEvents(ctx context.Context, s3Event events.S3Event, logServer LeafQu
 	}
 }
 
-func LambdaHandler(ctx context.Context, s3Event events.S3Event) {
+func lambdaHandler(ctx context.Context, s3Event events.S3Event) {
 	sp, err := server.NewStorageProvider("mysql", nil)
 	if err != nil {
 		glog.Warningf("Unable to create storage provider: %v", err)
 		return
 	}
+	defer sp.Close()
 	registry := extension.Registry{
 		AdminStorage: sp.AdminStorage(),
 		LogStorage:   sp.LogStorage(),
@@ -73,5 +74,5 @@ func LambdaHandler(ctx context.Context, s3Event events.S3Event) {
 func main() {
 	envy.Parse("LAMBDA")
 	flag.Parse()
-	lambda.Start(LambdaHandler)
+	lambda.Start(lambdaHandler)
 }
