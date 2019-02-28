@@ -33,58 +33,45 @@ func CreateLeaf(hash []byte, data []byte) *trillian.LogLeaf {
 	}
 }
 
-func CreateHandler(logServer LeafQueuer, logId int64) func(ctx context.Context, s3Event events.S3Event) {
-	log := logServer
-	return func(ctx context.Context, s3Event events.S3Event) {
-		var index int64 = 0
-		var leaves []*trillian.LogLeaf
+func ProcessEvents(ctx context.Context, s3Event events.S3Event, logServer LeafQueuer, treeId int64) {
+	var index int64 = 0
+	var leaves []*trillian.LogLeaf
 
-		for _, record := range s3Event.Records {
-			index++
-			s3 := record.S3
-			fmt.Printf("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, s3.Bucket.Name, s3.Object.Key)
-			data, _ := json.Marshal(s3)
-			hash, _ := th.HashLeaf(data)
-			leaves = append(leaves, CreateLeaf(hash, data))
+	for _, record := range s3Event.Records {
+		index++
+		s3 := record.S3
+		fmt.Printf("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, s3.Bucket.Name, s3.Object.Key)
+		data, _ := json.Marshal(s3)
+		hash, _ := th.HashLeaf(data)
+		leaves = append(leaves, CreateLeaf(hash, data))
+	}
+	if len(leaves) > 0 {
+		req := &trillian.QueueLeavesRequest{LogId: treeId, Leaves: leaves}
+		res, err := logServer.QueueLeaves(ctx, req)
+		if err != nil {
+			glog.Errorf("Unable to write leaf: %v", err)
 		}
-		if len(leaves) > 0 {
-			req := &trillian.QueueLeavesRequest{LogId: logId, Leaves: leaves}
-			res, err := log.QueueLeaves(ctx, req)
-			if err != nil {
-				glog.Errorf("Unable to write leaf: %v", err)
-			}
-			glog.Infof("Queueing response: %v", res)
-		}
+		glog.Infof("Queueing response: %v", res)
 	}
 }
 
-func StartTrillian(ctx context.Context, sp server.StorageProvider, treeId int64) (*server.TrillianLogRPCServer, error) {
+func LambdaHandler(ctx context.Context, s3Event events.S3Event) {
+	sp, err := server.NewStorageProvider("mysql", nil)
+	if err != nil {
+		glog.Warningf("Unable to create storage provider: %v", err)
+		return
+	}
 	registry := extension.Registry{
 		AdminStorage: sp.AdminStorage(),
 		LogStorage:   sp.LogStorage(),
 	}
 	timeSource := clock.System
 	logServer := *server.NewTrillianLogRPCServer(registry, timeSource)
-	glog.Infof("Trillian has started, health: %v", logServer.IsHealthy())
-	res, err := logServer.InitLog(ctx, &trillian.InitLogRequest{LogId: treeId})
-	if err != nil {
-		glog.Warningf("Unable to initlog: %v", err)
-		return nil, err
-	}
-	glog.Infof("Log initialised: %v", res)
-	return &logServer, nil
+	ProcessEvents(ctx, s3Event, &logServer, *treeId)
 }
 
 func main() {
 	envy.Parse("LAMBDA")
 	flag.Parse()
-	ctx := context.Background()
-	sp, err := server.NewStorageProvider("mysql", nil)
-	defer sp.Close()
-	if err != nil {
-		glog.Warningf("Unable to create storage provider: %v", err)
-		return
-	}
-	logServer, _ := StartTrillian(ctx, sp, *treeId)
-	lambda.Start(CreateHandler(logServer, *treeId))
+	lambda.Start(LambdaHandler)
 }
