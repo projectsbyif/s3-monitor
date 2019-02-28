@@ -4,16 +4,18 @@ resource "aws_db_subnet_group" "trillian-db" {
 }
 
 resource "aws_rds_cluster" "trillian-db-cluster" {
-  cluster_identifier      = "aurora-cluster"
-  engine                  = "aurora"
-  availability_zones      = ["${data.aws_availability_zones.available.names}"]
-  database_name           = "trillian"
-  master_username         = "trillian"
-  master_password         = "trillian"
-  engine_mode             = "serverless"
-  backup_retention_period = 1
-  db_subnet_group_name    = "${aws_db_subnet_group.trillian-db.name}"
-  vpc_security_group_ids  = ["${aws_security_group.trillian-db.id}"]
+  cluster_identifier        = "aurora-cluster"
+  engine                    = "aurora"
+  availability_zones        = ["${data.aws_availability_zones.available.names}"]
+  database_name             = "trillian"
+  master_username           = "trillian"
+  master_password           = "trillian"
+  engine_mode               = "serverless"
+  backup_retention_period   = 1
+  db_subnet_group_name      = "${aws_db_subnet_group.trillian-db.name}"
+  vpc_security_group_ids    = ["${aws_security_group.trillian-db.id}"]
+  skip_final_snapshot       = true
+  final_snapshot_identifier = "final-trillian-db-snapshot"
 
   scaling_configuration {
     auto_pause               = true
