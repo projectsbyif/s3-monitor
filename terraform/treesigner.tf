@@ -1,10 +1,10 @@
 resource "aws_lambda_function" "treesigner" {
-  filename         = "treesigner.zip"
+  filename         = "../treesigner.zip"
   function_name    = "treesigner"
   role             = "${aws_iam_role.iam_for_lambda.arn}"
   handler          = "treesigner"
   runtime          = "go1.x"
-  source_code_hash = "${base64sha256(file("treesigner.zip"))}"
+  source_code_hash = "${base64sha256(file("../treesigner.zip"))}"
   timeout          = 60 // Increased timeout because waking up the serverless Aurora can take some time
 
   environment      = {
