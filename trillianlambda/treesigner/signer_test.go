@@ -68,8 +68,6 @@ func TestTreeSignerTrillianIntegration(t *testing.T) {
 	logServer := *server.NewTrillianLogRPCServer(registry, clock.System)
 	logServer.InitLog(ctx, &trillian.InitLogRequest{LogId: tree.TreeId})
 
-	// glog.Errorf("QueueLeaves error: %v", err)
-
 	info := server.LogOperationInfo{
 		Registry:   registry,
 		TimeSource: clock.System,
