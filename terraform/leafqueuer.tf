@@ -7,12 +7,12 @@ resource "aws_lambda_permission" "allow_bucket" {
 }
 
 resource "aws_lambda_function" "leafqueuer" {
-  filename         = "handler.zip"
-  function_name    = "handler"
+  filename         = "leafqueuer.zip"
+  function_name    = "leafqueuer"
   role             = "${aws_iam_role.iam_for_lambda.arn}"
-  handler          = "handler"
+  handler          = "leafqueuer"
   runtime          = "go1.x"
-  source_code_hash = "${base64sha256(file("handler.zip"))}"
+  source_code_hash = "${base64sha256(file("leafqueuer.zip"))}"
   timeout          = 60 // Increased timeout because waking up the serverless Aurora can take some time
 
   environment      = {
