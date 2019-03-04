@@ -12,6 +12,11 @@ import (
 	"github.com/google/trillian/server"
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
+
+	_ "github.com/google/trillian/crypto/keyspb"
+	_ "github.com/google/trillian/crypto/keys/der/proto"
+	_ "github.com/google/trillian/crypto/keys/pem/proto"
+	_ "github.com/google/trillian/crypto/keys/pkcs11/proto"
 )
 
 var (
@@ -19,7 +24,13 @@ var (
 )
 
 func TreeSigner(ctx context.Context, sequencerManager *server.SequencerManager, treeId int64, info *server.LogOperationInfo) {
-	sequencerManager.ExecutePass(ctx, treeId, info)
+	glog.Infof("Running a pass on tree: %v", treeId)
+	res, err := sequencerManager.ExecutePass(ctx, treeId, info)
+	if err != nil {
+		glog.Warningf("Unable to execute pass: %v", err)
+		return
+	}
+	glog.Infof("Pass complete: %v", res)
 }
 
 func lambdaHandler(ctx context.Context) {
