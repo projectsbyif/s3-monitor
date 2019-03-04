@@ -15,6 +15,8 @@ import (
 	"github.com/google/trillian/server"
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
+
+	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
 )
 
 var (
@@ -24,13 +26,6 @@ var (
 
 type LeafQueuer interface {
 	QueueLeaves(context.Context, *trillian.QueueLeavesRequest) (*trillian.QueueLeavesResponse, error)
-}
-
-func CreateLeaf(hash []byte, data []byte) *trillian.LogLeaf {
-	return &trillian.LogLeaf{
-		MerkleLeafHash: hash,
-		LeafValue:      data,
-	}
 }
 
 func ProcessEvents(ctx context.Context, s3Event events.S3Event, logServer LeafQueuer, treeId int64) {
@@ -43,7 +38,7 @@ func ProcessEvents(ctx context.Context, s3Event events.S3Event, logServer LeafQu
 		fmt.Printf("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, s3.Bucket.Name, s3.Object.Key)
 		data, _ := json.Marshal(s3)
 		hash, _ := th.HashLeaf(data)
-		leaves = append(leaves, CreateLeaf(hash, data))
+		leaves = append(leaves, trillianlambda.CreateLeaf(hash, data))
 	}
 	if len(leaves) > 0 {
 		req := &trillian.QueueLeavesRequest{LogId: treeId, Leaves: leaves}

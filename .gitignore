@@ -2,5 +2,8 @@ terraform/.terraform
 terraform/terraform.tf
 terraform/terraform.tfvars
 terraform/handler.zip
-lambda/handler
+trillian/handler
 lambda/lambda
+trillianlambda/lambda
+trillianlambda/leafqueuer/handler
+trillianlambda/treesigner/signer
