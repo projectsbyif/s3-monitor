@@ -28,6 +28,7 @@ resource "aws_iam_role_policy" "trillian_handler" {
   "Statement": [
       {
         "Action": [
+            "s3:*",
             "logs:*",
             "ec2:*"
         ],

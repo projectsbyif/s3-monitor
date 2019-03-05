@@ -39,3 +39,8 @@ resource "aws_s3_bucket" "logs" {
 }
 POLICY
 }
+
+resource "aws_s3_bucket" "signed_log_roots" {
+  bucket        = "${var.log_roots_bucket_name}"
+  force_destroy = true
+}

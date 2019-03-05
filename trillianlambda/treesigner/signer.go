@@ -1,11 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/extension"
@@ -15,6 +23,7 @@ import (
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
 
+	"github.com/google/trillian/crypto/keys/der"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	_ "github.com/google/trillian/crypto/keys/pem/proto"
 	_ "github.com/google/trillian/crypto/keys/pkcs11/proto"
@@ -22,8 +31,15 @@ import (
 )
 
 var (
-	treeId = flag.Int64("treeid", 0, "ID of the Trillian log tree events should be stored in.")
+	treeId     = flag.Int64("treeid", 0, "ID of the Trillian log tree events should be stored in.")
+	bucketName = flag.String("bucket_name", "", "S3 Bucket containing signed log roots.")
 )
+
+type LogRootVerificationData struct {
+	rootHash         string
+	logRootSignature string
+	publicKey        crypto.PublicKey
+}
 
 func TreeSigner(ctx context.Context, sequencerManager server.LogOperation, treeId int64, info *server.LogOperationInfo) (trillian.SignedLogRoot, error) {
 	glog.Infof("Running a pass on tree: %v", treeId)
@@ -69,6 +85,45 @@ func getSignedLogRoot(ctx context.Context, treeId int64, registry extension.Regi
 	return slr, nil
 }
 
+func publishToS3(ctx context.Context, registry extension.Registry, treeId int64, signedLogRoot trillian.SignedLogRoot) {
+	rootHash := base64.StdEncoding.EncodeToString(signedLogRoot.GetRootHash())
+	logRootSignature := base64.StdEncoding.EncodeToString(signedLogRoot.GetLogRootSignature())
+
+	tree, err := trees.GetTree(ctx, registry.AdminStorage, treeId, trees.GetOpts{Operation: trees.Admin})
+	if err != nil {
+		glog.Errorf("Failed to get Tree, %v", err)
+	}
+	publicKey, _ := der.FromPublicProto(tree.GetPublicKey())
+
+	l := LogRootVerificationData{rootHash, logRootSignature, publicKey}
+	body, err := json.Marshal(l)
+	if err != nil {
+		glog.Errorf("Failed to marshal json, %v", err)
+	}
+
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		glog.Errorf("Failed to LoadDefaultAWSConfig, %v", err)
+	}
+	uploader := s3manager.NewUploader(cfg)
+
+	t := time.Now()
+	timekey := t.Format("2006/01/02")
+
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(*bucketName),
+		Key:    aws.String(fmt.Sprintf("%v/%v.json", timekey, treeId)),
+		Body:   bytes.NewReader(body),
+	})
+
+	if err != nil {
+		glog.Errorf("failed to upload file, %v", err)
+	}
+
+	glog.Infof("file uploaded to, %s", aws.StringValue(&result.Location))
+
+}
+
 func lambdaHandler(ctx context.Context) {
 	sp, err := server.NewStorageProvider("mysql", nil)
 	if err != nil {
@@ -89,7 +144,8 @@ func lambdaHandler(ctx context.Context) {
 		BatchSize:  100,
 	}
 
-	TreeSigner(ctx, sequencerManager, *treeId, &info)
+	signedLogRoot, _ := TreeSigner(ctx, sequencerManager, *treeId, &info)
+	publishToS3(ctx, registry, *treeId, signedLogRoot)
 }
 
 func main() {

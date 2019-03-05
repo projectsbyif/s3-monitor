@@ -13,6 +13,7 @@ resource "aws_lambda_function" "treesigner" {
       LAMBDA_TREEID               = "${var.tree_id}"
       LAMBDA_MYSQL_URI            = "${aws_rds_cluster.trillian-db-cluster.master_username}:${aws_rds_cluster.trillian-db-cluster.master_password}@tcp(${aws_rds_cluster.trillian-db-cluster.endpoint}:${aws_rds_cluster.trillian-db-cluster.port})/${aws_rds_cluster.trillian-db-cluster.database_name}"
       LAMBDA_MYSQL_MAX_IDLE_CONNS = 0
+      LAMBDA_BUCKET_NAME          = "${aws_s3_bucket.signed_log_roots.bucket}"
     }
   }
 
