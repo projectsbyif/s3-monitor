@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"testing"
 	"time"
@@ -15,6 +16,8 @@ import (
 	"github.com/google/trillian/util/clock"
 	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
 
+	tcrypto "github.com/google/trillian/crypto"
+	"github.com/google/trillian/crypto/keys/der"
 	stestonly "github.com/google/trillian/storage/testonly"
 )
 
@@ -45,6 +48,15 @@ func leafGenerator() *trillian.LogLeaf {
 	hash, _ := th.HashLeaf(data)
 
 	return trillianlambda.CreateLeaf(hash, data)
+}
+
+func isValidSignedLogRoot(t *testing.T, signedLogRoot trillian.SignedLogRoot) {
+	publicKey, _ := der.FromPublicProto(tree.GetPublicKey())
+
+	_, err := tcrypto.VerifySignedLogRoot(publicKey, crypto.SHA256, &signedLogRoot)
+	if err != nil {
+		t.Errorf("Not a valid signed log root: %v", err)
+	}
 }
 
 func TestTreeSignerTrillianIntegration(t *testing.T) {
@@ -79,21 +91,24 @@ func TestTreeSignerTrillianIntegration(t *testing.T) {
 	t.Run("no events", func(t *testing.T) {
 		assertLeavesAdded(t, sp.LogStorage(), 0, func() {
 			sp.LogStorage().QueueLeaves(ctx, tree, []*trillian.LogLeaf{}, queueTimestamp)
-			TreeSigner(ctx, sequencerManager, tree.TreeId, &info)
+			signedLogRoot, _ := TreeSigner(ctx, sequencerManager, tree.TreeId, &info)
+			isValidSignedLogRoot(t, signedLogRoot)
 		})
 	})
 
 	t.Run("one event", func(t *testing.T) {
 		assertLeavesAdded(t, sp.LogStorage(), 1, func() {
 			sp.LogStorage().QueueLeaves(ctx, tree, []*trillian.LogLeaf{leafGenerator()}, queueTimestamp)
-			TreeSigner(ctx, sequencerManager, tree.TreeId, &info)
+			signedLogRoot, _ := TreeSigner(ctx, sequencerManager, tree.TreeId, &info)
+			isValidSignedLogRoot(t, signedLogRoot)
 		})
 	})
 
 	t.Run("five events", func(t *testing.T) {
 		assertLeavesAdded(t, sp.LogStorage(), 5, func() {
 			sp.LogStorage().QueueLeaves(ctx, tree, []*trillian.LogLeaf{leafGenerator(), leafGenerator(), leafGenerator(), leafGenerator(), leafGenerator()}, queueTimestamp)
-			TreeSigner(ctx, sequencerManager, tree.TreeId, &info)
+			signedLogRoot, _ := TreeSigner(ctx, sequencerManager, tree.TreeId, &info)
+			isValidSignedLogRoot(t, signedLogRoot)
 		})
 	})
 }
