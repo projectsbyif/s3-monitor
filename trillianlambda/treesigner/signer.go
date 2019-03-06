@@ -68,7 +68,6 @@ func getSignedLogRoot(ctx context.Context, treeId int64, registry extension.Regi
 	}
 
 	tx, err := registry.LogStorage.SnapshotForTree(ctx, tree)
-	defer tx.Close()
 
 	if err != nil {
 		glog.Errorf("Unable to snapshot for tree: %v", err)
@@ -76,6 +75,7 @@ func getSignedLogRoot(ctx context.Context, treeId int64, registry extension.Regi
 	}
 
 	slr, err := tx.LatestSignedLogRoot(ctx)
+	tx.Commit()
 
 	if err != nil {
 		glog.Errorf("Unable to get latest signed log root: %v", err)
