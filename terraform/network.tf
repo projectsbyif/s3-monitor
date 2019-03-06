@@ -36,3 +36,9 @@ resource "aws_default_route_table" "rt" {
   }
 }
 
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id          = "${aws_vpc.main.id}"
+  service_name    = "com.amazonaws.eu-west-2.s3"
+  route_table_ids = ["${aws_default_route_table.rt.default_route_table_id}"]
+}
+
