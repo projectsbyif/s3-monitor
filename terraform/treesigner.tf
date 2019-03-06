@@ -34,7 +34,7 @@ resource "aws_lambda_permission" "cloudwatch_trigger" {
 resource "aws_cloudwatch_event_rule" "lambda" {
   name                = "Tree-signer-event"
   description         = "Schedule trigger for lambda execution"
-  schedule_expression = "rate(5 minutes)"
+  schedule_expression = "cron(0 0 * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "lambda" {

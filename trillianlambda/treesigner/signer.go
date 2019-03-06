@@ -3,9 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto"
-	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"time"
@@ -23,9 +22,8 @@ import (
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
 
-	"github.com/google/trillian/crypto/keys/der"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
-	_ "github.com/google/trillian/crypto/keys/pem/proto"
+	_ "github.com/google/trillian/crypto/keys/pem"
 	_ "github.com/google/trillian/crypto/keys/pkcs11/proto"
 	_ "github.com/google/trillian/crypto/keyspb"
 )
@@ -36,9 +34,8 @@ var (
 )
 
 type LogRootVerificationData struct {
-	RootHash         string
-	LogRootSignature string
-	PublicKey        crypto.PublicKey
+	SignedLogRoot trillian.SignedLogRoot `json:"signed_log_root"`
+	PublicKey     string                 `json:"public_key"`
 }
 
 func TreeSigner(ctx context.Context, sequencerManager server.LogOperation, treeId int64, info *server.LogOperationInfo) (trillian.SignedLogRoot, error) {
@@ -86,18 +83,19 @@ func getSignedLogRoot(ctx context.Context, treeId int64, registry extension.Regi
 }
 
 func publishToS3(ctx context.Context, registry extension.Registry, treeId int64, signedLogRoot trillian.SignedLogRoot) {
-	rootHash := base64.StdEncoding.EncodeToString(signedLogRoot.GetRootHash())
-	logRootSignature := base64.StdEncoding.EncodeToString(signedLogRoot.GetLogRootSignature())
-	glog.Infof("Publishing to S3 for root hash: %v", rootHash)
-
 	tree, err := trees.GetTree(ctx, registry.AdminStorage, treeId, trees.GetOpts{Operation: trees.Admin})
 	glog.Infof("Got tree ID: %v", tree.GetTreeId())
 	if err != nil {
 		glog.Errorf("Failed to get Tree, %v", err)
 	}
-	publicKey, _ := der.FromPublicProto(tree.GetPublicKey())
+	publicKey := tree.GetPublicKey()
 
-	l := LogRootVerificationData{rootHash, logRootSignature, publicKey}
+	publicKeyPEM := string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKey.GetDer(),
+	}))
+
+	l := LogRootVerificationData{signedLogRoot, publicKeyPEM}
 	body, err := json.Marshal(l)
 	if err != nil {
 		glog.Errorf("Failed to marshal json, %v", err)
@@ -145,7 +143,7 @@ func lambdaHandler(ctx context.Context) {
 	info := server.LogOperationInfo{
 		Registry:   registry,
 		TimeSource: clock.System,
-		BatchSize:  100,
+		BatchSize:  10000,
 	}
 
 	signedLogRoot, _ := TreeSigner(ctx, sequencerManager, *treeId, &info)
