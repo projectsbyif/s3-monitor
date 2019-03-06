@@ -36,9 +36,9 @@ var (
 )
 
 type LogRootVerificationData struct {
-	rootHash         string
-	logRootSignature string
-	publicKey        crypto.PublicKey
+	RootHash         string
+	LogRootSignature string
+	PublicKey        crypto.PublicKey
 }
 
 func TreeSigner(ctx context.Context, sequencerManager server.LogOperation, treeId int64, info *server.LogOperationInfo) (trillian.SignedLogRoot, error) {
@@ -88,8 +88,10 @@ func getSignedLogRoot(ctx context.Context, treeId int64, registry extension.Regi
 func publishToS3(ctx context.Context, registry extension.Registry, treeId int64, signedLogRoot trillian.SignedLogRoot) {
 	rootHash := base64.StdEncoding.EncodeToString(signedLogRoot.GetRootHash())
 	logRootSignature := base64.StdEncoding.EncodeToString(signedLogRoot.GetLogRootSignature())
+	glog.Infof("Publishing to S3 for root hash: %v", rootHash)
 
 	tree, err := trees.GetTree(ctx, registry.AdminStorage, treeId, trees.GetOpts{Operation: trees.Admin})
+	glog.Infof("Got tree ID: %v", tree.GetTreeId())
 	if err != nil {
 		glog.Errorf("Failed to get Tree, %v", err)
 	}
@@ -110,6 +112,7 @@ func publishToS3(ctx context.Context, registry extension.Registry, treeId int64,
 	t := time.Now()
 	timekey := t.Format("2006/01/02")
 
+	glog.Info("Uploading to S3 len: %v", len(body))
 	result, err := uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(*bucketName),
 		Key:    aws.String(fmt.Sprintf("%v/%v.json", timekey, treeId)),
@@ -121,7 +124,6 @@ func publishToS3(ctx context.Context, registry extension.Registry, treeId int64,
 	}
 
 	glog.Infof("file uploaded to, %s", aws.StringValue(&result.Location))
-
 }
 
 func lambdaHandler(ctx context.Context) {
