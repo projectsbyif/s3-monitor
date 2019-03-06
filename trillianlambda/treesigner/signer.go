@@ -103,7 +103,9 @@ func publishToS3(ctx context.Context, registry extension.Registry, treeId int64,
 		glog.Errorf("Failed to marshal json, %v", err)
 	}
 
+	logLevel := aws.LogLevel(aws.LogDebug)
 	cfg, err := external.LoadDefaultAWSConfig()
+	cfg.LogLevel = logLevel
 	if err != nil {
 		glog.Errorf("Failed to LoadDefaultAWSConfig, %v", err)
 	}
@@ -112,7 +114,7 @@ func publishToS3(ctx context.Context, registry extension.Registry, treeId int64,
 	t := time.Now()
 	timekey := t.Format("2006/01/02")
 
-	glog.Info("Uploading to S3 len: %v", len(body))
+	glog.Infof("Uploading to S3 len: %v", len(body))
 	result, err := uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(*bucketName),
 		Key:    aws.String(fmt.Sprintf("%v/%v.json", timekey, treeId)),
