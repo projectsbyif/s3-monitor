@@ -21,6 +21,7 @@ import (
 	"github.com/google/trillian/trees"
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
+	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
 
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	_ "github.com/google/trillian/crypto/keys/pem"
@@ -32,11 +33,6 @@ var (
 	treeId     = flag.Int64("treeid", 0, "ID of the Trillian log tree events should be stored in.")
 	bucketName = flag.String("bucket_name", "", "S3 Bucket containing signed log roots.")
 )
-
-type LogRootVerificationData struct {
-	SignedLogRoot trillian.SignedLogRoot `json:"signed_log_root"`
-	PublicKey     string                 `json:"public_key"`
-}
 
 func TreeSigner(ctx context.Context, sequencerManager server.LogOperation, treeId int64, info *server.LogOperationInfo) (trillian.SignedLogRoot, error) {
 	glog.Infof("Running a pass on tree: %v", treeId)
@@ -95,7 +91,7 @@ func publishToS3(ctx context.Context, registry extension.Registry, treeId int64,
 		Bytes: publicKey.GetDer(),
 	}))
 
-	l := LogRootVerificationData{signedLogRoot, publicKeyPEM}
+	l := trillianlambda.LogRootVerificationData{SignedLogRoot: signedLogRoot, PublicKey: publicKeyPEM}
 	body, err := json.Marshal(l)
 	if err != nil {
 		glog.Errorf("Failed to marshal json, %v", err)
