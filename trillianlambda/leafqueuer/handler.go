@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
-	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -34,11 +32,8 @@ func ProcessEvents(ctx context.Context, s3Event events.S3Event, logServer LeafQu
 
 	for _, record := range s3Event.Records {
 		index++
-		s3 := record.S3
-		fmt.Printf("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, s3.Bucket.Name, s3.Object.Key)
-		data, _ := json.Marshal(s3)
-		hash, _ := th.HashLeaf(data)
-		leaves = append(leaves, trillianlambda.CreateLeaf(hash, data))
+		glog.Infof("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, record.S3.Bucket.Name, record.S3.Object.Key)
+		leaves = append(leaves, trillianlambda.CreateLeafFromS3Event(record))
 	}
 	if len(leaves) > 0 {
 		req := &trillian.QueueLeavesRequest{LogId: treeId, Leaves: leaves}

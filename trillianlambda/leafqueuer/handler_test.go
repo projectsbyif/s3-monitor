@@ -13,7 +13,7 @@ import (
 	"github.com/google/trillian/server"
 	"github.com/google/trillian/storage"
 	"github.com/google/trillian/util/clock"
-	"github.com/projectsbyif/verifiable-cloudtrail/lambda/leafcreator/testonly"
+	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda/leafqueuer/testonly"
 
 	stestonly "github.com/google/trillian/storage/testonly"
 )
