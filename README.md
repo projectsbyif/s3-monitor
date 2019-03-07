@@ -1,4 +1,4 @@
-# Monitoring data within AWS S3 with Trillian #
+# Monitoring data within Amazon S3 with Trillian #
 
 This repository is a combination of Go code used in Amazon Lambda functions and
 Terraform code to deploy the functions including an example application using
