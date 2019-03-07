@@ -58,27 +58,28 @@ datasets in S3 could work.
 
 ### CloudTrail's existing integrity checks ###
 
-CloudTrail includes existing integrity checks, they don't allow for the same
-types of proofs provided by Trillian. However they work with existing tools and
-work well, if you use AWS you should enable them. This project is not an
-alternative.
+While CloudTrail includes existing integrity checks, they don't allow for the
+same types of proofs provided by Trillian. However they work with existing
+tools and work well, and if you use AWS you should enable them. This project is
+not an alternative.
 
 ### What can be proven with Trillian ###
 
-Each day a new Signed Log Root is published it's possible to continuously
+Each day a new Signed Log Root is published making it possible to continuously
 monitor the "append-only" nature of the log by asking Trillian to issue a
 consistency proof.
 
-This consistency proof includes hashes intermediary leaves added in the past
-day, using these you are able to establish that the previous log root has been
+This consistency proof includes hashes of intermediary leaves added in the past
+day. Using these you are able to establish that the previous log root has been
 appended to, not edited.
 
 ## Other use cases ##
 
-In some cases it will make sense of other features in Trillian. If you're sharing
-data into an S3 bucket and require proof your data has been received as it was
-sent Trillian may provide an "inclusion" proof. There may also be similar use
-cases in proving data is absent from a dataset or has been removed.
+In some cases, it will make sense to use other features in Trillian. For
+instance, if you're sharing data into an S3 bucket and require proof your data
+has been received as it was sent Trillian may provide an "inclusion" proof.
+There may also be similar use cases in proving data is absent or has been
+removed from a dataset.
 
 We have an upcoming blog post which will cover possible future applications of
 this technology.
