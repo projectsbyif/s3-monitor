@@ -65,8 +65,9 @@ alternative.
 
 ### What can be proven with Trillian ###
 
-Each day a new Signed Log Root is published it's possible to monitor the
-"append-only" nature of the log by asking Trillian to issue a consistency proof.
+Each day a new Signed Log Root is published it's possible to continuously
+monitor the "append-only" nature of the log by asking Trillian to issue a
+consistency proof.
 
 This consistency proof includes hashes intermediary leaves added in the past
 day, using these you are able to establish that the previous log root has been
