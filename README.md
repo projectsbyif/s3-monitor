@@ -33,6 +33,8 @@ Currently our code includes new leaves into the Merkle tree once a day. The new
 signed log root is written to a separate S3 bucket which could be monitored for
 consistency.
 
+![AWS architecture diagram](images/aws-architecture.svg?raw=true "AWS Architecture")
+
 ### Deploying ###
 
 Requirements: a working [Go programming environment](https://golang.org/doc/install), [Terraform](https://www.terraform.io/).
