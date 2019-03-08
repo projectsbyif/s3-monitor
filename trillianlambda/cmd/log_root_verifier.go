@@ -11,7 +11,7 @@ import (
 	"github.com/golang/glog"
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/der"
-	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
+	"github.com/projectsbyif/s3-monitor/trillianlambda"
 )
 
 func main() {

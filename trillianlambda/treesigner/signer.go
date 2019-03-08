@@ -21,7 +21,7 @@ import (
 	"github.com/google/trillian/trees"
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
-	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
+	"github.com/projectsbyif/s3-monitor/trillianlambda"
 
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	_ "github.com/google/trillian/crypto/keys/pem"

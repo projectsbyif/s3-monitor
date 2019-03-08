@@ -14,7 +14,7 @@ import (
 	"github.com/google/trillian/util/clock"
 	"github.com/jamiealquiza/envy"
 
-	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
+	"github.com/projectsbyif/s3-monitor/trillianlambda"
 )
 
 var (

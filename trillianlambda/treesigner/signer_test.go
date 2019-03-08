@@ -14,7 +14,7 @@ import (
 	"github.com/google/trillian/server"
 	"github.com/google/trillian/storage"
 	"github.com/google/trillian/util/clock"
-	"github.com/projectsbyif/verifiable-cloudtrail/trillianlambda"
+	"github.com/projectsbyif/s3-monitor/trillianlambda"
 
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/der"
