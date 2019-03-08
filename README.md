@@ -34,7 +34,6 @@ signed log root is written to a separate S3 bucket which could be monitored for
 consistency.
 
 ![AWS architecture diagram](./images/aws-architecture.svg)
-<img src="./images/aws-architecture.svg">
 
 ### Deploying ###
 
