@@ -79,6 +79,19 @@ This consistency proof includes hashes of intermediary leaves added in the past
 day. Using these you are able to establish that the previous log root has been
 appended to, not edited.
 
+## Limitations ##
+
+This is exploratory work and shouldn't seen as a replacement for the integrity
+support which exists in AWS services like CloudTrail already.
+
+While Trillian itself uses secure hashing functions when creating leaves
+(typically SHA-256) by following rfc6962. Currently S3 events only include a
+hash of the file in the way of an eTag (intended for cache busting) which uses
+md5, a famously broken cryptographic hash function.
+
+It would be great if AWS began supplying a modern cryptographically secure hash
+of the object in the events captured by s3-monitor.
+
 ## Other use cases ##
 
 In some cases, it will make sense to use other features in Trillian. For
