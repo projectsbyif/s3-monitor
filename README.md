@@ -20,6 +20,10 @@ provide proofs that data has been added in an "append-only" fashion. The log is
 said to be tamper-evident as any edits to elements already included in the
 Merkle tree can be identified.
 
+These proofs can be used in ways without revealing the underlying data. For
+instance in cases where sensitive data is held about a user they could acquire a
+proof data about them is held without seeing data about other users.
+
 ## How it works ##
 
 Objects added to an S3 bucket trigger a Lambda function which adds metadata
